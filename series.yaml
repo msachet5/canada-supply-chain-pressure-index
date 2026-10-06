@@ -1,0 +1,186 @@
+# Canada Supply Chain Pressure Index: input series.
+#
+# Every series is pulled from an open source and filtered to one time series
+# by dimension members (StatCan full-table CSV columns). Member names must
+# match the table exactly: run `cscpi audit` first; it prints the available
+# members for any filter that does not match, the last reference period and
+# whether the table is still updated.
+#
+# role:
+#   supply  - a supply-side pressure signal; enters the index after demand effects are purged
+#   demand  - a demand proxy; used only to purge demand effects, never enters the index directly
+# transform:
+#   level   - use as published (already a ratio or index level)
+#   yoy     - 12-month percent change (prices, volumes)
+#   diff    - first difference
+#   log_yoy - 12-month log change
+# sign: +1 if a higher value means MORE supply chain pressure, -1 if less.
+# status: verified = table id confirmed against a StatCan release or table page;
+#         verify   = table id believed correct, member names to be confirmed by `cscpi audit`.
+
+settings:
+  start: "2017-01"            # Transport Canada performance indicators start in 2017
+  min_current_series: 6       # gate: below this, publish the indicator pulse, not the composite
+  max_staleness_months: 4     # a series is "current" if its last observation is this recent
+  reference_series: msm_unfilled_orders_ratio   # the index is signed to correlate positively with this
+
+series:
+  # ---------------- Manufacturing (Monthly Survey of Manufacturing) ----------------
+  - id: msm_unfilled_orders_ratio
+    name: Manufacturing unfilled orders to sales ratio
+    source: statcan
+    table: "16-10-0047-01"
+    status: verified
+    filters:
+      GEO: Canada
+      Principal statistics: Unfilled orders to sales ratio
+      Seasonal adjustment: Seasonally adjusted
+      North American Industry Classification System (NAICS): Manufacturing [31-33]
+    role: supply
+    transform: level
+    sign: 1
+    why: "Backlogs build when supply cannot keep up with orders (the GSCPI uses PMI backlogs)."
+
+  - id: msm_inventory_sales_ratio
+    name: Manufacturing inventory to sales ratio
+    source: statcan
+    table: "16-10-0047-01"
+    status: verified
+    filters:
+      GEO: Canada
+      Principal statistics: Inventory to sales ratio
+      Seasonal adjustment: Seasonally adjusted
+      North American Industry Classification System (NAICS): Manufacturing [31-33]
+    role: supply
+    transform: level
+    sign: 1
+    why: "Precautionary stockpiling and stuck work in process raise the ratio (the GSCPI uses PMI stocks of purchases)."
+
+  - id: msm_raw_materials_inventory
+    name: Manufacturing raw materials inventories
+    source: statcan
+    table: "16-10-0047-01"
+    status: verify
+    filters:
+      GEO: Canada
+      Principal statistics: Raw materials, inventories
+      Seasonal adjustment: Seasonally adjusted
+      North American Industry Classification System (NAICS): Manufacturing [31-33]
+    role: supply
+    transform: yoy
+    sign: 1
+    why: "Raw material hoarding is a classic shortage response."
+
+  - id: msm_new_orders
+    name: Manufacturing new orders
+    source: statcan
+    table: "16-10-0047-01"
+    status: verified
+    filters:
+      GEO: Canada
+      Principal statistics: New orders
+      Seasonal adjustment: Seasonally adjusted
+      North American Industry Classification System (NAICS): Manufacturing [31-33]
+    role: demand
+    transform: yoy
+    sign: 1
+    why: "Demand proxy (the GSCPI purges PMI components of PMI new orders)."
+
+  # ---------------- Prices ----------------
+  - id: rmpi_total
+    name: Raw materials price index
+    source: statcan
+    table: "18-10-0268-01"
+    status: verify
+    filters:
+      GEO: Canada
+      North American Product Classification System (NAPCS): Total, Raw materials price index (RMPI)
+    role: supply
+    transform: yoy
+    sign: 1
+    why: "Input cost pressure."
+
+  - id: ippi_intermediate
+    name: Industrial product price index, intermediate goods
+    source: statcan
+    table: "18-10-0266-01"
+    status: verify
+    filters:
+      GEO: Canada
+      North American Product Classification System (NAPCS): Intermediate energy goods [5]
+    role: supply
+    transform: yoy
+    sign: 1
+    why: "Price of goods moving through supply chains. Member to confirm; choose the total intermediate goods aggregate if present."
+
+  - id: trucking_price
+    name: For-hire motor carrier freight services price index
+    source: statcan
+    table: "18-10-0281-01"
+    status: verify
+    filters:
+      GEO: Canada
+    role: supply
+    transform: yoy
+    sign: 1
+    why: "Domestic freight cost (the GSCPI uses shipping and airfreight costs). Check frequency; quarterly series are interpolated to monthly."
+
+  # ---------------- Transport performance (Transport Canada) ----------------
+  - id: tc_port_dwell
+    name: Container port dwell time
+    source: statcan
+    table: "23-10-0271-01"
+    status: verify
+    filters:
+      Transportation supply chain performance indicators: Port dwell time
+    role: supply
+    transform: level
+    sign: 1
+    why: "Containers waiting longer at port is direct congestion. The open.canada.ca listing showed a last update of 2025-01-07: the audit decides whether it stays."
+
+  - id: rail_terminal_dwell
+    name: Rail terminal performance
+    source: statcan
+    table: "23-10-0274-01"
+    status: verify
+    filters: {}
+    role: supply
+    transform: level
+    sign: 1
+    why: "Weekly rail terminal performance, averaged to months. Sign depends on the measure chosen; confirm in audit."
+
+  - id: rail_carloadings
+    name: Railway carloadings, total tonnage
+    source: statcan
+    table: "23-10-0216-01"
+    status: verify
+    filters:
+      GEO: Canada
+    role: demand
+    transform: yoy
+    sign: 1
+    why: "Freight volume. Treated as demand, so congestion signals are measured relative to volume."
+
+  # ---------------- Demand ----------------
+  - id: retail_sales
+    name: Retail trade sales
+    source: statcan
+    table: "20-10-0008-01"
+    status: verify
+    filters:
+      GEO: Canada
+      Adjustments: Seasonally adjusted
+    role: demand
+    transform: yoy
+    sign: 1
+    why: "Consumer demand proxy."
+
+  # ---------------- Global context ----------------
+  - id: gscpi
+    name: New York Fed Global Supply Chain Pressure Index
+    source: nyfed
+    status: verify
+    role: benchmark
+    transform: level
+    sign: 1
+    why: "Not an input. Used to validate that the Canadian index co-moves with global pressure."

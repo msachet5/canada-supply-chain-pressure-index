@@ -1,0 +1,55 @@
+name: Monthly release
+
+# The Monthly Survey of Manufacturing is released mid-month for the month two months earlier,
+# so the index is rebuilt on the 20th and again on the 28th to catch late tables.
+on:
+  schedule:
+    - cron: "17 13 20 * *"
+    - cron: "17 13 28 * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - run: pip install -e ".[charts]" openpyxl
+      - name: Audit inputs
+        run: cscpi audit | tee audit.txt
+      - name: Build
+        run: |
+          echo "VINTAGE=$(date +%Y-%m)" >> "$GITHUB_ENV"
+          cscpi build --refresh --vintage "$(date +%Y-%m)"
+      - name: Validate against the NY Fed GSCPI
+        run: cscpi validate || true
+      - name: Latest month
+        run: echo "LATEST=$(python -c "import json;print(json.load(open('data/cscpi.json'))['summary']['latest_month'][:7])")" >> "$GITHUB_ENV"
+      - name: Commit data if it changed
+        id: commit
+        run: |
+          git config user.name "cscpi-bot"
+          git config user.email "actions@users.noreply.github.com"
+          git add data/
+          if git diff --cached --quiet; then echo "changed=false" >> "$GITHUB_OUTPUT"; exit 0; fi
+          echo "changed=true" >> "$GITHUB_OUTPUT"
+          git commit -m "data: CSCPI release for ${LATEST}"
+          git tag -f "data-${LATEST}"
+          git push && git push -f --tags
+      - name: GitHub release (Zenodo archives each release and mints a DOI)
+        if: steps.commit.outputs.changed == 'true'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: data-${{ env.LATEST }}
+          body_path: data/releases/notes_${{ env.VINTAGE }}.md
+          files: |
+            data/cscpi.csv
+            data/cscpi.json
+            data/cscpi.png
+        continue-on-error: true

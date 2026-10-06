@@ -1,0 +1,10 @@
+cff-version: 1.2.0
+message: "If you use the index or its code, please cite it as below."
+title: "Canada Supply Chain Pressure Index (CSCPI)"
+authors:
+  - family-names: Mulimani
+    given-names: Sachet
+version: 0.1.0
+license: MIT
+repository-code: "https://github.com/msachet5/canada-supply-chain-pressure-index"
+keywords: [supply chain, Canada, economic indicator, GSCPI]

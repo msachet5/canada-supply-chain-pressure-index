@@ -1,0 +1,11 @@
+{
+  "title": "Canada Supply Chain Pressure Index (CSCPI)",
+  "description": "A monthly composite index of Canadian supply chain pressure built from open Statistics Canada and Transport Canada data. Supply-side indicators are standardised, purged of demand effects and summarised by their first principal component, following the structure of the Federal Reserve Bank of New York's Global Supply Chain Pressure Index. Each release includes the index, input audit and methodology.",
+  "creators": [{ "name": "Mulimani, Sachet" }],
+  "upload_type": "dataset",
+  "license": "MIT",
+  "keywords": ["supply chain", "Canada", "economic indicator", "principal component analysis", "GSCPI", "nowcasting"],
+  "related_identifiers": [
+    { "identifier": "https://github.com/msachet5/canada-supply-chain-pressure-index", "relation": "isSupplementTo", "scheme": "url" }
+  ]
+}

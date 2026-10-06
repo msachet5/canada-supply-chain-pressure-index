@@ -1,0 +1,86 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Canada Supply Chain Pressure Index</title>
+<meta name="description" content="Monthly Canada supply chain pressure index built from open Statistics Canada and Transport Canada data.">
+<style>
+  :root { --ink:#1d2433; --muted:#5b6475; --line:#e3e6ec; --bg:#fff; --panel:#f6f7f9; --accent:#2f5bd3; --hot:#c0392b; --cool:#1b7f4b; }
+  @media (prefers-color-scheme: dark) { :root { --ink:#e6e9ef; --muted:#a2a9b8; --line:#2c3240; --bg:#141821; --panel:#1b202b; --accent:#7c9cff; --hot:#ff8a80; --cool:#5fd39a; } }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--ink); font:15px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",Inter,Roboto,sans-serif; }
+  main { max-width:920px; margin:0 auto; padding:28px 16px 56px; }
+  h1 { font-size:26px; margin:0 0 4px; }
+  .sub { color:var(--muted); margin:0 0 22px; }
+  .cards { display:grid; grid-template-columns:repeat(auto-fit,minmax(180px,1fr)); gap:12px; margin-bottom:18px; }
+  .card { background:var(--panel); border-radius:10px; padding:14px; }
+  .card b { display:block; font-size:28px; }
+  .card span { color:var(--muted); font-size:13px; }
+  svg { width:100%; height:auto; display:block; }
+  .axis { stroke:var(--line); } .zero { stroke:var(--muted); stroke-dasharray:3 3; }
+  .line { fill:none; stroke:var(--accent); stroke-width:2; }
+  .lbl { fill:var(--muted); font-size:11px; }
+  ul { padding-left:18px; } .note { color:var(--muted); font-size:13px; }
+  a { color:var(--accent); }
+</style>
+</head>
+<body>
+<main>
+  <h1>Canada Supply Chain Pressure Index</h1>
+  <p class="sub" id="sub">Loading the latest release...</p>
+  <div class="cards">
+    <div class="card"><b id="val">-</b><span id="reading">latest value, standard deviations from average</span></div>
+    <div class="card"><b id="chg">-</b><span>change from previous month</span></div>
+    <div class="card"><b id="mode">-</b><span>release type</span></div>
+  </div>
+  <div id="chart" role="img" aria-label="CSCPI over time"></div>
+  <h2 style="font-size:17px">What moved it</h2>
+  <ul id="drivers"></ul>
+  <p class="note">Built monthly from open Statistics Canada and Transport Canada data. Supply indicators are standardised, purged of demand effects and combined by principal components, following the structure of the New York Fed GSCPI.
+  <a href="https://github.com/msachet5/canada-supply-chain-pressure-index">Method, code and data</a>. Source data reproduced under the Statistics Canada Open Licence; no endorsement by Statistics Canada is implied.</p>
+</main>
+<script>
+const SRC = new URLSearchParams(location.search).get("src") ||
+  "https://raw.githubusercontent.com/msachet5/canada-supply-chain-pressure-index/main/data/cscpi.json";
+
+function draw(series) {
+  const W = 880, H = 300, P = { l: 36, r: 10, t: 10, b: 26 };
+  const vals = series.map(d => d.value).filter(v => v !== null);
+  const lo = Math.min(-2, ...vals), hi = Math.max(2, ...vals);
+  const x = i => P.l + (W - P.l - P.r) * i / Math.max(series.length - 1, 1);
+  const y = v => P.t + (H - P.t - P.b) * (hi - v) / (hi - lo);
+  let path = "", started = false;
+  series.forEach((d, i) => {
+    if (d.value === null) { started = false; return; }
+    path += (started ? "L" : "M") + x(i).toFixed(1) + "," + y(d.value).toFixed(1);
+    started = true;
+  });
+  let ticks = "";
+  for (let v = Math.ceil(lo); v <= Math.floor(hi); v++) {
+    ticks += `<line class="axis" x1="${P.l}" x2="${W - P.r}" y1="${y(v)}" y2="${y(v)}"/><text class="lbl" x="${P.l - 6}" y="${y(v) + 4}" text-anchor="end">${v}</text>`;
+  }
+  let years = "";
+  series.forEach((d, i) => {
+    if (d.month.slice(5, 7) === "01") years += `<text class="lbl" x="${x(i)}" y="${H - 6}" text-anchor="middle">${d.month.slice(0, 4)}</text>`;
+  });
+  document.getElementById("chart").innerHTML =
+    `<svg viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg">${ticks}<line class="zero" x1="${P.l}" x2="${W - P.r}" y1="${y(0)}" y2="${y(0)}"/>${years}<path class="line" d="${path}"/></svg>`;
+}
+
+fetch(SRC).then(r => r.json()).then(({ summary, series }) => {
+  const fmt = v => (v > 0 ? "+" : "") + Number(v).toFixed(2);
+  document.getElementById("sub").textContent = `Release ${summary.vintage}, data to ${summary.latest_month.slice(0, 7)}.`;
+  document.getElementById("val").textContent = fmt(summary.value);
+  document.getElementById("val").style.color = summary.value > 0.5 ? "var(--hot)" : summary.value < -0.5 ? "var(--cool)" : "";
+  document.getElementById("reading").textContent = summary.reading;
+  document.getElementById("chg").textContent = summary.change === undefined ? "n/a" : fmt(summary.change);
+  document.getElementById("mode").textContent = summary.mode === "composite" ? "Composite" : "Indicator pulse";
+  const ul = document.getElementById("drivers");
+  (summary.drivers || []).forEach(d => { const li = document.createElement("li"); li.textContent = `${d.series}: ${fmt(d.contribution)}`; ul.appendChild(li); });
+  if (!(summary.drivers || []).length) ul.innerHTML = "<li>Not available for the indicator pulse.</li>";
+  draw(series);
+}).catch(() => { document.getElementById("sub").textContent = "Could not load the data file."; });
+</script>
+</body>
+</html>
