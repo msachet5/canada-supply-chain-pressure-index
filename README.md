@@ -36,7 +36,10 @@ cscpi validate                    # correlation with the NY Fed GSCPI
 
 ```python
 import polars as pl
-cscpi = pl.read_csv("https://raw.githubusercontent.com/msachet5/canada-supply-chain-pressure-index/main/data/cscpi.csv")
+
+cscpi = pl.read_csv(
+    "https://raw.githubusercontent.com/msachet5/canada-supply-chain-pressure-index/main/data/cscpi.csv"
+)
 ```
 
 Each release is archived with a DOI on Zenodo (see the badge once the first release is out) and mirrored to Kaggle and Hugging Face.

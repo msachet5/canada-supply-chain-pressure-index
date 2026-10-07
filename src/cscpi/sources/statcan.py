@@ -24,8 +24,20 @@ import requests
 WDS = "https://www150.statcan.gc.ca/t1/wds/rest"
 CACHE = Path.home() / ".cache" / "cscpi" / "statcan"
 META_COLS = {
-    "REF_DATE", "GEO", "DGUID", "UOM", "UOM_ID", "SCALAR_FACTOR", "SCALAR_ID", "VECTOR",
-    "COORDINATE", "VALUE", "STATUS", "SYMBOL", "TERMINATED", "DECIMALS",
+    "REF_DATE",
+    "GEO",
+    "DGUID",
+    "UOM",
+    "UOM_ID",
+    "SCALAR_FACTOR",
+    "SCALAR_ID",
+    "VECTOR",
+    "COORDINATE",
+    "VALUE",
+    "STATUS",
+    "SYMBOL",
+    "TERMINATED",
+    "DECIMALS",
 }
 
 
@@ -59,7 +71,8 @@ def cube_metadata(table: str, session: requests.Session | None = None) -> dict[s
         "start": obj.get("cubeStartDate"),
         "end": obj.get("cubeEndDate"),
         "released": obj.get("releaseTime"),
-        "archived": str(obj.get("archiveStatusCode")) == "1" or "archived" in str(obj.get("archiveStatusEn", "")).lower(),
+        "archived": str(obj.get("archiveStatusCode")) == "1"
+        or "archived" in str(obj.get("archiveStatusEn", "")).lower(),
         "archive_status": obj.get("archiveStatusEn"),
         "frequency_code": obj.get("frequencyCode"),
         "dimensions": [

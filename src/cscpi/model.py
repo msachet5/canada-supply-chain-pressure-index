@@ -88,7 +88,9 @@ def purge_demand(supply: np.ndarray, demand: np.ndarray) -> tuple[np.ndarray, np
     return out, coefs
 
 
-def first_component(x: np.ndarray, max_iter: int = 500, tol: float = 1e-8) -> tuple[np.ndarray, np.ndarray, float]:
+def first_component(
+    x: np.ndarray, max_iter: int = 500, tol: float = 1e-8
+) -> tuple[np.ndarray, np.ndarray, float]:
     """First principal component of a panel with missing values.
 
     Iterates: fill missing cells with the rank-one reconstruction, recompute
@@ -177,7 +179,9 @@ def build_index(
     contrib = {sid: np.nan_to_num(resid[:, j]) * loadings[j] / sd for j, sid in enumerate(s_ids)}
     notes = []
     if explained < 0.3:
-        notes.append(f"first component explains only {explained:.0%} of variance: inputs move weakly together")
+        notes.append(
+            f"first component explains only {explained:.0%} of variance: inputs move weakly together"
+        )
     return IndexResult(
         months=list(months),
         index=index,

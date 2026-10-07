@@ -2,9 +2,9 @@
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import date
-from typing import Callable
 
 import polars as pl
 
@@ -46,9 +46,11 @@ class AuditRow:
     message: str = ""
 
 
-def audit(cfg: Config, today: date | None = None, fetcher: Callable[[SeriesSpec], pl.DataFrame] | None = None) -> tuple[list[AuditRow], dict]:
+def audit(
+    cfg: Config, today: date | None = None, fetcher: Callable[[SeriesSpec], pl.DataFrame] | None = None
+) -> tuple[list[AuditRow], dict]:
     """Check every series: does the filter resolve, how recent is it, is it current."""
-    today = today or date.today()
+    today = today or date.today()  # noqa: DTZ011
     fetcher = fetcher or fetch_series
     rows: list[AuditRow] = []
     for spec in cfg.series:
@@ -57,9 +59,22 @@ def audit(cfg: Config, today: date | None = None, fetcher: Callable[[SeriesSpec]
             first, last = df["month"].min(), df["month"].max()
             stale = months_between(last, today) if last else None
             current = stale is not None and stale <= cfg.settings.max_staleness_months
-            rows.append(AuditRow(spec.id, spec.role, spec.table, spec.status, True, first, last, stale, current, df.height))
+            rows.append(
+                AuditRow(
+                    spec.id, spec.role, spec.table, spec.status, True, first, last, stale, current, df.height
+                )
+            )
         except Exception as exc:  # noqa: BLE001 - report every failure, keep auditing
-            rows.append(AuditRow(spec.id, spec.role, spec.table, spec.status, False, message=f"{type(exc).__name__}: {exc}"[:600]))
+            rows.append(
+                AuditRow(
+                    spec.id,
+                    spec.role,
+                    spec.table,
+                    spec.status,
+                    False,
+                    message=f"{type(exc).__name__}: {exc}"[:600],
+                )
+            )
     n_current_supply = sum(r.current for r in rows if r.role == "supply")
     gate = {
         "current_supply_series": n_current_supply,
@@ -69,8 +84,12 @@ def audit(cfg: Config, today: date | None = None, fetcher: Callable[[SeriesSpec]
     return rows, gate
 
 
-def build(cfg: Config, refresh: bool = False, fetcher: Callable[[SeriesSpec], pl.DataFrame] | None = None,
-          today: date | None = None) -> tuple[str, IndexResult | None, pl.DataFrame | None, list[AuditRow]]:
+def build(
+    cfg: Config,
+    refresh: bool = False,
+    fetcher: Callable[[SeriesSpec], pl.DataFrame] | None = None,
+    today: date | None = None,
+) -> tuple[str, IndexResult | None, pl.DataFrame | None, list[AuditRow]]:
     """Build the composite when the gate passes, otherwise the indicator pulse."""
     fetcher = fetcher or (lambda s: fetch_series(s, refresh=refresh))
     rows, gate = audit(cfg, today=today, fetcher=fetcher)
@@ -79,6 +98,8 @@ def build(cfg: Config, refresh: bool = False, fetcher: Callable[[SeriesSpec], pl
     demand = {s.id: transform(fetcher(s), s.transform) for s in cfg.by_role("demand") if s.id in usable}
     signs = {s.id: s.sign for s in cfg.series}
     if gate["mode"] == "composite":
-        result = build_index(supply, demand, signs, start=cfg.settings.start, reference=cfg.settings.reference_series)
+        result = build_index(
+            supply, demand, signs, start=cfg.settings.start, reference=cfg.settings.reference_series
+        )
         return "composite", result, None, rows
     return "pulse", None, pulse(supply, signs, start=cfg.settings.start), rows

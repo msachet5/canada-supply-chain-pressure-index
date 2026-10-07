@@ -22,14 +22,18 @@ def cmd_audit(a: argparse.Namespace) -> int:
     for r in rows:
         if not r.ok:
             print(f"\n[{r.id}] {r.message}")
-    print(f"\nGate: {gate['current_supply_series']} current supply series, {gate['required']} required -> {gate['mode'].upper()}")
+    print(
+        f"\nGate: {gate['current_supply_series']} current supply series, {gate['required']} required -> {gate['mode'].upper()}"
+    )
     return 0
 
 
 def cmd_members(a: argparse.Namespace) -> int:
     """Print the dimensions and members of a StatCan table, to write filters."""
     meta = statcan.cube_metadata(a.table)
-    print(f"{meta['title']} | {meta['start']} to {meta['end']} | released {meta['released']} | {meta['archive_status']}")
+    print(
+        f"{meta['title']} | {meta['start']} to {meta['end']} | released {meta['released']} | {meta['archive_status']}"
+    )
     for d in meta["dimensions"]:
         print(f"\n{d['name']}:")
         for m in d["members"][: a.limit]:
@@ -61,9 +65,13 @@ def cmd_validate(a: argparse.Namespace) -> int:
     j = ours.select("month", col).join(g.rename({"value": "gscpi"}), on="month", how="inner")
     for lag in (0, 1, 3, 6):
         jj = ours.select("month", col).join(
-            g.with_columns(pl.col("month").dt.offset_by(f"{lag}mo")).rename({"value": "gscpi"}), on="month", how="inner"
+            g.with_columns(pl.col("month").dt.offset_by(f"{lag}mo")).rename({"value": "gscpi"}),
+            on="month",
+            how="inner",
         )
-        print(f"corr(CSCPI_t, GSCPI_t-{lag}) = {jj.select(pl.corr(col, 'gscpi')).item():.2f}  (n={jj.height})")
+        print(
+            f"corr(CSCPI_t, GSCPI_t-{lag}) = {jj.select(pl.corr(col, 'gscpi')).item():.2f}  (n={jj.height})"
+        )
     print(f"overlap: {j['month'].min()} to {j['month'].max()}")
     return 0
 
